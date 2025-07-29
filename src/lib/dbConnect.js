@@ -1,19 +1,36 @@
-import { MongoClient, ServerApiVersion } from 'mongodb';
-async function dbConnect(collectionName){
-try{
-      const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.b4gl5td.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
+// lib/mongodb.js
+import { MongoClient } from "mongodb";
+
+const uri = process.env.MONGODB_URI;
+
+if (!uri) {
+  throw new Error("Please define the MONGODB_URI environment variable");
+}
+
+let cachedClient = global._mongoClient;
+
+if (!cachedClient) {
+  cachedClient = global._mongoClient = { conn: null, promise: null };
+}
+
+async function dbConnect() {
+  if (cachedClient.conn) {
+    return cachedClient.conn;
   }
-});
-return await client.db(process.env.DB_NAME).collection(collectionName)
-}catch(err){
-  console.log(err);
-  
+
+  if (!cachedClient.promise) {
+    const client = new MongoClient(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    cachedClient.promise = client.connect().then((client) => {
+      return client;
+    });
+  }
+
+  cachedClient.conn = await cachedClient.promise;
+  return cachedClient.conn;
 }
-}
-export default dbConnect; 
+
+export default dbConnect;
