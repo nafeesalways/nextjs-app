@@ -1,36 +1,24 @@
-// lib/mongodb.js
-import { MongoClient } from "mongodb";
+import { MongoClient, ServerApiVersion } from "mongodb"
 
-const uri = process.env.MONGODB_URI;
-
-if (!uri) {
-  throw new Error("Please define the MONGODB_URI environment variable");
+export const collectionNames = {
+    TEST_USER: "test_user",
+    PRACTICE_DATA: "practice_data"
 }
 
-let cachedClient = global._mongoClient;
 
-if (!cachedClient) {
-  cachedClient = global._mongoClient = { conn: null, promise: null };
-}
+function dbConnect(collectionName) {
+    const uri = process.env.MONGODB_URI
 
-async function dbConnect() {
-  if (cachedClient.conn) {
-    return cachedClient.conn;
-  }
-
-  if (!cachedClient.promise) {
+    // Create a MongoClient with a MongoClientOptions object to set the Stable API version
     const client = new MongoClient(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+        serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+        }
     });
 
-    cachedClient.promise = client.connect().then((client) => {
-      return client;
-    });
-  }
-
-  cachedClient.conn = await cachedClient.promise;
-  return cachedClient.conn;
+    return client.db(process.env.DB_NAME).collection(collectionName)
 }
 
 export default dbConnect;

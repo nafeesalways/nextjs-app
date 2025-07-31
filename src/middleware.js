@@ -1,19 +1,24 @@
-import { NextResponse } from 'next/server'
- 
-// This function can be marked `async` if using `await` inside
-export function middleware(request) {
-    const currentCookie = request.cookies.get('nextjs-token');
+import { getToken } from "next-auth/jwt";
+import { NextResponse } from "next/server";
 
-    
-    const dummyUserData ={
-        role:"user",
-        email:"test@admin.com"
-    }
-    let isServicesPage = request.nextUrl.pathname.startsWith('/services');
-    let isAdmin = dummyUserData.role === 'admin';
-    if(isServicesPage && !isAdmin)
-        return NextResponse.redirect(new URL('/login', request.url))
-    
-  return NextResponse.next()
-}
- 
+export const middleware = async (req) => {
+  const token = await getToken({ req });
+  const isTokenOk = Boolean(token);
+  const isAdminUser = token?.role == "admin";
+  const isAdminSpecificRoute = req.nextUrl.pathname.startsWith("/dashboard");
+  const isProductPage=req.nextUrl.pathname.startsWith('/products');
+  if(isProductPage && !isTokenOk){
+     const callbackUri = encodeURIComponent(req.nextUrl.pathname);
+    return NextResponse.redirect(
+      new URL(`/api/auth/signin?callbackUri=${callbackUri}`,req.url)
+    );
+  }
+  if (isAdminSpecificRoute && !isAdminUser) {
+    const callbackUri = encodeURIComponent(req.nextUrl.pathname);
+    return NextResponse.redirect(
+      new URL(`/api/auth/signin?callbackUri=${callbackUri}`,req.url)
+    );
+  }
+
+  return NextResponse.next();
+};
